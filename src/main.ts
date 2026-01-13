@@ -1,0 +1,46 @@
+import { NestFactory } from '@nestjs/core';
+import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { AppModule } from './modules/app.module';
+import { DataSource } from 'typeorm';
+import { getDataSourceToken } from '@nestjs/typeorm';
+import { createAdminIfNotExists } from './utils/create-admin';
+import { seedExams } from './utils/seed-exams';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule, { cors: true });
+
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: false,
+      transform: true,
+      transformOptions: {
+        enableImplicitConversion: true,
+      },
+    }),
+  );
+
+  // Avtomatik admin va imtihonlar yaratish
+  try {
+    const dataSource = app.get<DataSource>(getDataSourceToken());
+    await createAdminIfNotExists(dataSource);
+    await seedExams(dataSource);
+  } catch (error) {
+    console.warn('⚠️  Seed ma\'lumotlar yaratishda xatolik (baza hali tayyor emas bo\'lishi mumkin):', error);
+  }
+
+  const config = app.get(ConfigService);
+  const port = config.get<number>('PORT') || 4000;
+
+  // Serve static files from upload folder
+  const express = require('express');
+  app.use('/upload', express.static('upload'));
+
+  await app.listen(port);
+  // eslint-disable-next-line no-console
+  console.log(`🚀 API running on http://localhost:${port}`);
+}
+
+void bootstrap();
+
