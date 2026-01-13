@@ -1,4 +1,10 @@
-import { Controller, Post, UploadedFile, UseGuards, UseInterceptors } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors,
+} from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
 import { extname } from 'path';
@@ -6,6 +12,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { UserRole } from '../users/user.entity';
+import type { Express } from 'express';
 
 @Controller('admin/upload')
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -15,7 +22,7 @@ export class UploadController {
   @UseInterceptors(
     FileInterceptor('file', {
       storage: diskStorage({
-        destination: './upload',
+        destination: './upload', // fayllar saqlanadigan papka
         filename: (req, file, cb) => {
           const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1e9);
           const ext = extname(file.originalname);
@@ -38,6 +45,7 @@ export class UploadController {
     if (!file) {
       return { error: 'Fayl yuklanmadi' };
     }
+
     return {
       url: `/upload/${file.filename}`,
       filename: file.filename,
@@ -46,6 +54,3 @@ export class UploadController {
     };
   }
 }
-
-
-
