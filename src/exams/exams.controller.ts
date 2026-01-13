@@ -4,7 +4,7 @@ import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserRole } from '../users/user.entity';
-import { ExamType } from './exam.entity';
+import { ExamContent, ExamType } from './exam.entity';
 
 @Controller('exams')
 export class ExamsController {
@@ -15,10 +15,11 @@ export class ExamsController {
     return this.examsService.listExams();
   }
 
-  @Post('create')
+   @Post('create')
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles(UserRole.ADMIN)
-  create(@Body() body: { title: string; type: ExamType; content: Record<string, unknown> }) {
+  create(@Body() body: { title: string; type: ExamType; content: ExamContent }) {
+    // ✅ body.content endi ExamContent turiga mos
     return this.examsService.createExam(body);
   }
 

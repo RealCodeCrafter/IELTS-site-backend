@@ -73,7 +73,7 @@ export class AdminService {
   async getAllExams() {
     return this.examRepo.find({
       relations: ['attempts'],
-      order: { createdAt: 'DESC' },
+      order: { id: 'DESC' },
     });
   }
 

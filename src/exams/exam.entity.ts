@@ -46,7 +46,7 @@ export interface Question {
 
 export interface ExamContent {
   description?: string;
-  duration: number; // minutes
+  examDuration: number; // minutes
   listening?: {
     sections: ListeningSection[];
     totalQuestions: number;
