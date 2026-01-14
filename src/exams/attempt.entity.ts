@@ -17,10 +17,10 @@ export class Attempt {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
 
-  @ManyToOne(() => User, (user) => user.attempts, { eager: true })
+  @ManyToOne(() => User, (user) => user.attempts, { eager: true, onDelete: 'CASCADE' })
   user!: User;
 
-  @ManyToOne(() => Exam, (exam) => exam.attempts, { eager: true })
+  @ManyToOne(() => Exam, (exam) => exam.attempts, { eager: true, onDelete: 'CASCADE' })
   exam!: Exam;
 
   @Column({ type: 'jsonb', default: {} })

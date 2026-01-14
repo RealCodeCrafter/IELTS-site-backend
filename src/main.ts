@@ -6,9 +6,18 @@ import { DataSource } from 'typeorm';
 import { getDataSourceToken } from '@nestjs/typeorm';
 import { createAdminIfNotExists } from './utils/create-admin';
 import { seedExams } from './utils/seed-exams';
+import * as fs from 'fs';
+import * as path from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { cors: true });
+
+  // Create upload directory if it doesn't exist
+  const uploadDir = path.join(process.cwd(), 'upload');
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+    console.log('✅ Upload papkasi yaratildi');
+  }
 
   app.useGlobalPipes(
     new ValidationPipe({

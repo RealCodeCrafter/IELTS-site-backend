@@ -46,6 +46,14 @@ export class AdminService {
   async deleteUser(id: string) {
     const user = await this.userRepo.findOne({ where: { id } });
     if (!user) throw new NotFoundException('User not found');
+    
+    // Delete all attempts related to this user first (scores will be deleted automatically due to CASCADE)
+    const attempts = await this.attemptRepo.find({ where: { user: { id } } });
+    if (attempts.length > 0) {
+      await this.attemptRepo.remove(attempts);
+    }
+    
+    // Now delete the user
     await this.userRepo.remove(user);
     return { message: 'User deleted successfully' };
   }
@@ -66,6 +74,14 @@ export class AdminService {
   async deleteExam(id: string) {
     const exam = await this.examRepo.findOne({ where: { id } });
     if (!exam) throw new NotFoundException('Exam not found');
+    
+    // Delete all attempts related to this exam first (scores will be deleted automatically due to CASCADE)
+    const attempts = await this.attemptRepo.find({ where: { exam: { id } } });
+    if (attempts.length > 0) {
+      await this.attemptRepo.remove(attempts);
+    }
+    
+    // Now delete the exam
     await this.examRepo.remove(exam);
     return { message: 'Exam deleted successfully' };
   }
