@@ -7,6 +7,9 @@ import { Profile } from './users/profile.entity';
 import { Exam } from './exams/exam.entity';
 import { Attempt } from './exams/attempt.entity';
 import { Score } from './exams/score.entity';
+import { Payment } from './payments/payment.entity';
+import { Subscription } from './payments/subscription.entity';
+import { AttemptAccess } from './payments/attempt-access.entity';
 
 /**
  * Runtime uchun (NestJS ishlayotganda)
@@ -20,7 +23,7 @@ export const typeormConfig = (
   username: configService.get<string>('DB_USER', 'postgres'),
   password: configService.get<string>('DB_PASS', 'postgres'),
   database: configService.get<string>('DB_NAME', 'ielts_platform'),
-  entities: [User, Profile, Exam, Attempt, Score],
+  entities: [User, Profile, Exam, Attempt, Score, Payment, Subscription, AttemptAccess],
   synchronize: configService.get<string>('DB_SYNC', 'true') === 'true',
 });
 
@@ -34,6 +37,6 @@ export const dataSourceOptions: DataSourceOptions = {
   username: process.env.DB_USER ?? 'postgres',
   password: process.env.DB_PASS ?? 'postgres',
   database: process.env.DB_NAME ?? 'ielts_platform',
-  entities: [User, Profile, Exam, Attempt, Score],
+  entities: [User, Profile, Exam, Attempt, Score, Payment, Subscription, AttemptAccess],
   synchronize: process.env.DB_SYNC === 'true',
 };

@@ -7,9 +7,10 @@ import { ExamsModule } from './exams.module';
 import { User } from '../users/user.entity';
 import { Exam } from '../exams/exam.entity';
 import { Attempt } from '../exams/attempt.entity';
+import { Payment } from '../payments/payment.entity';
 
 @Module({
-  imports: [ExamsModule, TypeOrmModule.forFeature([User, Exam, Attempt])],
+  imports: [ExamsModule, TypeOrmModule.forFeature([User, Exam, Attempt, Payment])],
   controllers: [AdminController, UploadController],
   providers: [AdminService],
 })

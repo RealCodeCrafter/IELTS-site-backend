@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Post, Put, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Post, Put, Query, UseGuards } from '@nestjs/common';
 import { ExamsService } from '../exams/exams.service';
 import { AdminService } from './admin.service';
 import { Roles } from '../auth/roles.decorator';
@@ -68,6 +68,22 @@ export class AdminController {
   @Get('attempts')
   listAttempts() {
     return this.examsService.listAllAttempts();
+  }
+
+  // Payments
+  @Get('payments')
+  getAllPayments(@Query('startDate') startDate?: string, @Query('endDate') endDate?: string) {
+    return this.adminService.getAllPayments(startDate, endDate);
+  }
+
+  @Put('payments/:id/approve')
+  approvePayment(@Param('id') id: string) {
+    return this.adminService.approvePayment(id);
+  }
+
+  @Put('payments/:id/reject')
+  rejectPayment(@Param('id') id: string) {
+    return this.adminService.rejectPayment(id);
   }
 }
 

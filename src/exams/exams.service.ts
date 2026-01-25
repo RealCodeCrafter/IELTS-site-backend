@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Exam } from './exam.entity';
@@ -6,6 +6,7 @@ import { Attempt } from './attempt.entity';
 import { Score } from './score.entity';
 import { UsersService } from '../users/users.service';
 import { AiScoringService } from '../ai/ai-scoring.service';
+import { PaymentsService } from '../payments/payments.service';
 
 interface SubmitAttemptPayload {
   examId: string;
@@ -21,6 +22,8 @@ export class ExamsService {
     @InjectRepository(Score) private readonly scoreRepo: Repository<Score>,
     private readonly usersService: UsersService,
     private readonly aiScoring: AiScoringService,
+    @Inject(forwardRef(() => PaymentsService))
+    private readonly paymentsService: PaymentsService,
   ) {}
 
   createExam(data: Partial<Exam>) {
@@ -32,6 +35,58 @@ export class ExamsService {
     return this.examRepo.find({
       select: ['id', 'title', 'type', 'content'],
     });
+  }
+
+  async checkExamAccess(userId: string, examId: string): Promise<boolean> {
+    if (!userId) return false;
+    return await this.paymentsService.hasEnoughBalance(userId);
+  }
+
+  async deductBalanceForExam(userId: string): Promise<void> {
+    await this.paymentsService.deductBalanceForExam(userId);
+  }
+
+  // Ensure user has access to exam - check balance and deduct only if no existing draft attempt
+  async ensureExamAccess(userId: string, examId: string): Promise<void> {
+    if (!userId) {
+      throw new ForbiddenException('User not authenticated');
+    }
+
+    // Check if user already has a draft attempt for this exam (not submitted yet)
+    const existingDraftAttempt = await this.attemptRepo.findOne({
+      where: {
+        user: { id: userId },
+        exam: { id: examId },
+        status: 'draft',
+      },
+    });
+
+    // If draft attempt exists, user already paid - just allow access
+    if (existingDraftAttempt) {
+      return;
+    }
+
+    // Check if user has enough balance
+    const hasEnough = await this.paymentsService.hasEnoughBalance(userId);
+    if (!hasEnough) {
+      throw new ForbiddenException('Insufficient balance. You need 10,000 UZS to take an exam. Please top up your balance.');
+    }
+
+    // Deduct balance and create draft attempt
+    await this.paymentsService.deductBalanceForExam(userId);
+    
+    // Create draft attempt to track that user has paid for this exam
+    const exam = await this.examRepo.findOne({ where: { id: examId } });
+    const user = await this.usersService.findById(userId);
+    if (exam && user) {
+      const draftAttempt = this.attemptRepo.create({
+        exam,
+        user,
+        answers: {},
+        status: 'draft',
+      });
+      await this.attemptRepo.save(draftAttempt);
+    }
   }
 
   async getExamById(id: string) {
@@ -82,23 +137,52 @@ export class ExamsService {
     const user = await this.usersService.findById(payload.userId);
     if (!user) throw new NotFoundException('User not found');
 
-    const attempt = this.attemptRepo.create({
-      exam,
-      user,
-      answers: payload.answers,
-      status: 'submitted',
+    // Check if there's an existing draft attempt
+    let attempt = await this.attemptRepo.findOne({
+      where: {
+        user: { id: payload.userId },
+        exam: { id: payload.examId },
+        status: 'draft',
+      },
     });
+
+    if (attempt) {
+      // Update existing draft attempt
+      attempt.answers = payload.answers;
+      attempt.status = 'submitted';
+    } else {
+      // Create new attempt (shouldn't happen normally, but handle it)
+      attempt = this.attemptRepo.create({
+        exam,
+        user,
+        answers: payload.answers,
+        status: 'submitted',
+      });
+    }
+    
     const saved = await this.attemptRepo.save(attempt);
 
-    const scoreValues = await this.aiScoring.score(exam, payload.answers);
-    const score = this.scoreRepo.create(scoreValues);
+    const scoreResult = await this.aiScoring.score(exam, payload.answers);
+    const score = this.scoreRepo.create({
+      listening: scoreResult.listening,
+      reading: scoreResult.reading,
+      writing: scoreResult.writing,
+      speaking: scoreResult.speaking,
+      overall: scoreResult.overall,
+    });
     score.attempt = saved;
     await this.scoreRepo.save(score);
 
     saved.score = score;
     saved.status = 'scored';
     const finalAttempt = await this.attemptRepo.save(saved);
-    return this.serializeAttempt(finalAttempt);
+    
+    // Serialize attempt with detailed results
+    const serialized = this.serializeAttempt(finalAttempt);
+    return {
+      ...serialized,
+      detailedResults: scoreResult.detailedResults,
+    };
   }
 
   async listAttemptsForUser(userId: string) {

@@ -12,6 +12,10 @@ import * as path from 'path';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
   
+  // Increase body size limit for file uploads (audio files can be large)
+  app.use(require('express').json({ limit: '50mb' }));
+  app.use(require('express').urlencoded({ extended: true, limit: '50mb' }));
+  
   // CORS configuration - allow all origins
   app.enableCors({
     origin: true, // Allow all origins
@@ -22,11 +26,16 @@ async function bootstrap() {
     maxAge: 86400, // 24 hours
   });
 
-  // Create upload directory if it doesn't exist
+  // Create upload directories if they don't exist
   const uploadDir = path.join(process.cwd(), 'upload');
+  const paymentsDir = path.join(process.cwd(), 'upload', 'payments');
   if (!fs.existsSync(uploadDir)) {
     fs.mkdirSync(uploadDir, { recursive: true });
     console.log('✅ Upload papkasi yaratildi');
+  }
+  if (!fs.existsSync(paymentsDir)) {
+    fs.mkdirSync(paymentsDir, { recursive: true });
+    console.log('✅ Payments upload papkasi yaratildi');
   }
 
   app.useGlobalPipes(
@@ -54,7 +63,8 @@ async function bootstrap() {
 
   // Serve static files from upload folder
   const express = require('express');
-  app.use('/upload', express.static('upload'));
+  const uploadPath = path.join(process.cwd(), 'upload');
+  app.use('/upload', express.static(uploadPath));
 
   await app.listen(port);
   // eslint-disable-next-line no-console

@@ -7,6 +7,7 @@ import { AuthModule } from './auth.module';
 import { ExamsModule } from './exams.module';
 import { AdminModule } from './admin.module';
 import { AiModule } from './ai.module';
+import { PaymentsModule } from './payments.module';
 
 import { typeormConfig } from '../typeorm.config';
 
@@ -29,6 +30,7 @@ import { typeormConfig } from '../typeorm.config';
     ExamsModule,
     AdminModule,
     AiModule,
+    PaymentsModule,
   ],
 })
 export class AppModule {}

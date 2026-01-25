@@ -4,6 +4,8 @@ import {
   UploadedFile,
   UseGuards,
   UseInterceptors,
+  HttpException,
+  HttpStatus,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { diskStorage } from 'multer';
@@ -33,7 +35,7 @@ export class UploadController {
         if (file.mimetype.startsWith('audio/')) {
           cb(null, true);
         } else {
-          cb(new Error('Faqat audio fayllar yuklash mumkin'), false);
+          cb(new HttpException('Only audio files are allowed', HttpStatus.BAD_REQUEST), false);
         }
       },
       limits: {
@@ -43,15 +45,22 @@ export class UploadController {
   )
   uploadAudio(@UploadedFile() file: Express.Multer.File) {
     if (!file) {
-      return { error: 'Fayl yuklanmadi' };
+      throw new HttpException('No file uploaded', HttpStatus.BAD_REQUEST);
     }
 
-    return {
-      url: `/upload/${file.filename}`,
-      filename: file.filename,
-      originalName: file.originalname,
-      size: file.size,
-    };
+    try {
+      return {
+        url: `/upload/${file.filename}`,
+        filename: file.filename,
+        originalName: file.originalname,
+        size: file.size,
+      };
+    } catch (error) {
+      throw new HttpException(
+        `Error processing file: ${error.message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
   }
 }
 

@@ -29,6 +29,9 @@ export class User {
   @Column({ type: 'enum', enum: UserRole, default: UserRole.STUDENT })
   role!: UserRole;
 
+  @Column({ type: 'numeric', precision: 10, scale: 2, default: 0 })
+  balance!: number; // Balance in UZS
+
   @OneToOne(() => Profile, (profile) => profile.user, { cascade: true })
   profile?: Profile;
 

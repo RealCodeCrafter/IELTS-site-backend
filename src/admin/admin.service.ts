@@ -1,9 +1,10 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, Between } from 'typeorm';
 import { User, UserRole } from '../users/user.entity';
 import { Exam } from '../exams/exam.entity';
 import { Attempt } from '../exams/attempt.entity';
+import { Payment } from '../payments/payment.entity';
 
 @Injectable()
 export class AdminService {
@@ -11,6 +12,7 @@ export class AdminService {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Exam) private readonly examRepo: Repository<Exam>,
     @InjectRepository(Attempt) private readonly attemptRepo: Repository<Attempt>,
+    @InjectRepository(Payment) private readonly paymentRepo: Repository<Payment>,
   ) {}
 
   // Users CRUD
@@ -120,6 +122,74 @@ export class AdminService {
       totalExams: exams,
       totalAttempts: attempts,
     };
+  }
+
+  // Payments
+  async getAllPayments(startDate?: string, endDate?: string) {
+    const queryBuilder = this.paymentRepo
+      .createQueryBuilder('payment')
+      .leftJoinAndSelect('payment.user', 'user')
+      .orderBy('payment.createdAt', 'DESC');
+
+    // Filter by date range if provided
+    if (startDate && endDate) {
+      queryBuilder.where('payment.createdAt BETWEEN :startDate AND :endDate', {
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+      });
+    }
+
+    const payments = await queryBuilder.getMany();
+    return payments.map((p) => ({
+      id: p.id,
+      userId: p.user?.id,
+      userLogin: p.user?.login,
+      amount: p.amount,
+      currency: p.currency,
+      status: p.status,
+      type: p.type,
+      provider: p.provider,
+      screenshotUrl: p.screenshotUrl,
+      cardLastDigits: p.cardLastDigits,
+      paymentDate: p.paymentDate,
+      createdAt: p.createdAt,
+    }));
+  }
+
+  async approvePayment(id: string) {
+    const payment = await this.paymentRepo.findOne({
+      where: { id },
+      relations: ['user'],
+    });
+    if (!payment) throw new NotFoundException('Payment not found');
+
+    if (payment.status === 'paid') {
+      return { message: 'Payment already approved' };
+    }
+
+    payment.status = 'paid';
+    await this.paymentRepo.save(payment);
+
+    // Add balance to user
+    if (payment.user) {
+      const user = await this.userRepo.findOne({ where: { id: payment.user.id } });
+      if (user) {
+        user.balance = (Number(user.balance) || 0) + Number(payment.amount);
+        await this.userRepo.save(user);
+      }
+    }
+
+    return { message: 'Payment approved and balance added', payment };
+  }
+
+  async rejectPayment(id: string) {
+    const payment = await this.paymentRepo.findOne({ where: { id } });
+    if (!payment) throw new NotFoundException('Payment not found');
+
+    payment.status = 'failed';
+    await this.paymentRepo.save(payment);
+
+    return { message: 'Payment rejected', payment };
   }
 }
 

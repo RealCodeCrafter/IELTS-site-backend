@@ -1,10 +1,11 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, ForbiddenException, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
 import { ExamsService } from './exams.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { UserRole } from '../users/user.entity';
 import { ExamContent, ExamType } from './exam.entity';
+import { Request } from 'express';
 
 @Controller('exams')
 export class ExamsController {
@@ -49,7 +50,11 @@ export class ExamsController {
   }
 
   @Get(':id')
-  getExamById(@Param('id') id: string) {
+  @UseGuards(JwtAuthGuard)
+  async getExamById(@Param('id') id: string, @Req() req: Request) {
+    const userId = (req as any).user?.id;
+    // Check balance and deduct when accessing exam (only if no existing draft attempt)
+    await this.examsService.ensureExamAccess(userId, id);
     return this.examsService.getExamById(id);
   }
 }
